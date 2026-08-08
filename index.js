@@ -9,13 +9,18 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'API de Validación de Identidad Colombia - Activa' });
+});
+
 app.post('/api/v1/validar', async (req, res) => {
-  const documentoRaw = req.body?.documento;
+  const documentoRaw = req.body?.documento || req.body?.cedula || req.query?.documento || req.query?.cedula;
   const documento = String(documentoRaw ?? '').trim().replace(/\D/g, '');
 
   if (!documento) {
