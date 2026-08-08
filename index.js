@@ -55,14 +55,18 @@ app.post('/api/v1/validar', async (req, res) => {
     return res.status(502).json({
       success: false,
       valido: false,
-      error: 'No fue posible consultar la fuente externa de validación',
+      error: error.message || 'No fue posible consultar la fuente externa de validación',
       code: 'FUENTE_NO_DISPONIBLE'
     });
   }
 });
 
 async function consultarFuenteExterna(documento) {
-  const endpoint = process.env.VALIDATOR_API_URL || 'https://jsonplaceholder.typicode.com/todos/1';
+  const endpoint = process.env.VALIDATOR_API_URL;
+  if (!endpoint) {
+    throw new Error('Falta configurar VALIDATOR_API_URL con una API de validación real');
+  }
+
   const method = (process.env.VALIDATOR_API_METHOD || 'GET').toUpperCase();
   const timeout = Number(process.env.VALIDATOR_API_TIMEOUT || 8000);
 
@@ -82,10 +86,18 @@ async function consultarFuenteExterna(documento) {
     : await axios.get(endpoint, config);
 
   const data = response.data || {};
+  if (!data || typeof data !== 'object') {
+    throw new Error('La API externa devolvió una respuesta inválida');
+  }
+
+  const valido = data.valido;
+  if (typeof valido !== 'boolean') {
+    throw new Error('La API externa no devolvió el campo "valido"');
+  }
+
   const nombre = data.nombre || data.name || data.title || `Documento ${documento}`;
-  const estado = data.estado || data.status || data.state || (data.completed === true ? 'VIGENTE' : 'EN REVISIÓN');
-  const alertaRiesgo = data.alerta_riesgo || data.alerta || data.risk || (data.completed === true ? 'SIN ALERTAS' : 'RIESGO MODERADO');
-  const valido = data.valido ?? (estado === 'VIGENTE' && alertaRiesgo !== 'ALTO RIESGO');
+  const estado = data.estado || data.status || data.state || (valido ? 'VIGENTE' : 'EN REVISIÓN');
+  const alertaRiesgo = data.alerta_riesgo || data.alerta || data.risk || (valido ? 'SIN ALERTAS' : 'RIESGO MODERADO');
 
   return {
     valido,
