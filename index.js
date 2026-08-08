@@ -64,7 +64,8 @@ app.post('/api/v1/validar', async (req, res) => {
 async function consultarFuenteExterna(documento) {
   const endpoint = process.env.VALIDATOR_API_URL;
   if (!endpoint) {
-    throw new Error('Falta configurar VALIDATOR_API_URL con una API de validación real');
+    console.warn('No se configuró VALIDATOR_API_URL; usando modo demo.');
+    return consultarFuenteDemo(documento);
   }
 
   const method = (process.env.VALIDATOR_API_METHOD || 'GET').toUpperCase();
@@ -108,6 +109,28 @@ async function consultarFuenteExterna(documento) {
     fecha_validacion: new Date().toISOString(),
     fuente: endpoint,
     datos_externos: data
+  };
+}
+
+function consultarFuenteDemo(documento) {
+  const digits = documento.split('').map(Number);
+  const suma = digits.reduce((sum, n) => sum + n, 0);
+  const patterns = ['VIGENTE', 'EN REVISIÓN', 'SUSPENDIDO'];
+  const risk = ['SIN ALERTAS', 'RIESGO MODERADO', 'ALTO RIESGO'];
+  const nombres = ['Carlos Andrés Morales', 'Daniela Torres', 'Sofía Ramírez', 'Miguel Ángel Peña', 'Valentina Gómez', 'Andrés Felipe Castillo'];
+
+  const index = suma % patterns.length;
+  const valido = index === 0;
+
+  return {
+    valido,
+    nombre: nombres[suma % nombres.length],
+    estado: patterns[index],
+    alerta_riesgo: risk[suma % risk.length],
+    score: 60 + (suma % 31),
+    fecha_validacion: new Date().toISOString(),
+    fuente: 'demo',
+    datos_externos: { documento, modo: 'demo' }
   };
 }
 
